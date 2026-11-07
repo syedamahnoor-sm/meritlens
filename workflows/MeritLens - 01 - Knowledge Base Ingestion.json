@@ -1,0 +1,501 @@
+{
+  "name": "MeritLens - 01 - Knowledge Base Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "meritlens_documents",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        112
+      ],
+      "id": "7c0a8e0f-6b79-4644-a091-a53e6aab3265",
+      "name": "Postgres PGVector Store",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        352
+      ],
+      "id": "9c66654a-5fc4-4d44-ae3c-6a87e9ac672e",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "xomZCY5mSBgRloPF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "=\t{{ $json.content }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "job_reference",
+                "value": "={{ $json.job_reference }}"
+              },
+              {
+                "name": "job_title",
+                "value": "={{ $json.job_title }}"
+              },
+              {
+                "name": "document_type",
+                "value": "={{ $json.document_type }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        352
+      ],
+      "id": "ecc93fb0-aa4c-441e-a84e-2366d65b5aff",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "MeritLens — Job Description Submission",
+        "formDescription": "Submit a job description to add a new position to the MeritLens recruitment knowledge base.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Job Reference",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Job Title",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Job Description",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "a38acacd-4655-404a-91b8-549fb5e3f534",
+      "name": "Job Description Form",
+      "webhookId": "88beb44b-fd94-46c9-870f-c647e4c46833",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "jXePlkB2dVc0nmFC",
+          "name": "meritlens - job submission"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de3c4cfc-5c7c-4959-b46b-df8c5a224dc4",
+              "name": "job_reference",
+              "value": "={{ $json[\"Job Reference\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "ebae3156-4484-478f-a969-7eb527a67359",
+              "name": "job_title",
+              "value": "={{ $json[\"Job Title\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "6b7fb064-68e5-4a05-93b3-b0ac3a559de6",
+              "name": "content",
+              "value": "={{ $json[\"Job Description\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "0068236c-910a-482e-a645-5c36551f30e5",
+              "name": "document_type",
+              "value": "job_description",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "69a6d8ca-9194-425e-b428-bae2f50552cc",
+      "name": "Prepare Job Data"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*)::int AS existing_count\nFROM meritlens_documents\nWHERE metadata->>'job_reference' = $1\n  AND metadata->>'document_type' = 'job_description';",
+        "options": {
+          "queryReplacement": "={{ [$json.job_reference] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "bf84385a-2c18-4548-b300-e9bde0c2cf23",
+      "name": "Check Existing Job",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "99877fad-c068-4d57-9fee-3cb44abcc25b",
+              "leftValue": "=\t{{ $json.existing_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        672,
+        0
+      ],
+      "id": "2ef6468d-d16d-48b9-8c02-891346ba83aa",
+      "name": "Job Already Exists?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "65ad5457-84dc-4593-9f94-5f17446e0f9d",
+              "name": "job_reference",
+              "value": "={{ $('Prepare Job Data').first().json.job_reference }}",
+              "type": "string"
+            },
+            {
+              "id": "8d7e4f93-d037-4557-891d-52903b8b10c0",
+              "name": "job_title",
+              "value": "={{ $('Prepare Job Data').first().json.job_title }}",
+              "type": "string"
+            },
+            {
+              "id": "0a21b089-7a8f-433c-8226-02dbd1c54af8",
+              "name": "content",
+              "value": "={{ $('Prepare Job Data').first().json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "bdc4d229-bae5-4f41-86c4-975a17eaff00",
+              "name": "document_type",
+              "value": "={{ $('Prepare Job Data').first().json.document_type }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        896,
+        112
+      ],
+      "id": "3fdf73cc-e009-497a-b000-7474451293b2",
+      "name": "Restore Job Data"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "080bfbb0-b5ff-45b2-ab8b-e89305a94195",
+              "name": "success",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "a027164d-7fb0-49d1-baeb-200819655b46",
+              "name": "status",
+              "value": "duplicate_job",
+              "type": "string"
+            },
+            {
+              "id": "88ead7c8-c6b8-4001-87b9-6de61b1d42fd",
+              "name": "job_reference",
+              "value": "={{ $('Prepare Job Data').first().json.job_reference }}",
+              "type": "string"
+            },
+            {
+              "id": "640358db-ee26-4d9d-800a-5c1dd7230237",
+              "name": "message",
+              "value": "={{ 'Job reference ' + $('Prepare Job Data').first().json.job_reference + ' already exists. Please use a unique job reference.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        912,
+        -96
+      ],
+      "id": "482bb905-16aa-4843-9dde-58aa86b47920",
+      "name": "Duplicate Job Response"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "={{ $json.message }}"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1136,
+        -96
+      ],
+      "id": "02a1bd05-80de-474f-9dff-64a5f18e782e",
+      "name": "Duplicate Job Form Ending",
+      "webhookId": "e1c351c8-8022-4ddd-b54c-c49ecdbfea7c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "25c457f3-4978-4c5d-ba0f-546fb60fec08",
+              "name": "success",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "6261eb6f-01ae-47f5-b4f5-d4b5c6f87c01",
+              "name": "status",
+              "value": "job_created",
+              "type": "string"
+            },
+            {
+              "id": "25f179c8-6ca7-4ffd-a8b8-6ae0296b359b",
+              "name": "job_reference",
+              "value": "={{ $('Prepare Job Data').first().json.job_reference }}",
+              "type": "string"
+            },
+            {
+              "id": "bbd00308-d353-4c94-a153-ebb5da061efc",
+              "name": "message",
+              "value": "={{ 'Job description ' + $('Prepare Job Data').first().json.job_reference + ' has been successfully added to the MeritLens knowledge base.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1520,
+        112
+      ],
+      "id": "326d3f05-b3a8-4179-8f22-402035da4587",
+      "name": "Job Ingestion Success"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "={{ $json.message }}"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        1744,
+        112
+      ],
+      "id": "2b813391-c1e0-42ee-8572-58fa40b2bef3",
+      "name": "Success Form Ending",
+      "webhookId": "23fa97b2-1451-44f5-8d34-fd84907b82c8"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Job Data": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Description Form": {
+      "main": [
+        [
+          {
+            "node": "Prepare Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Job": {
+      "main": [
+        [
+          {
+            "node": "Job Already Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Already Exists?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Job Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Restore Job Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Job Data": {
+      "main": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Job Response": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Job Form Ending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres PGVector Store": {
+      "main": [
+        [
+          {
+            "node": "Job Ingestion Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Ingestion Success": {
+      "main": [
+        [
+          {
+            "node": "Success Form Ending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3c8c0add-ca47-4914-9db2-c79b814859bd",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0982c85c58eb8dc7f661437e98d31b8f8606a04def32a04d615f596ff1817614"
+  },
+  "nodeGroups": [],
+  "id": "lzRgEeIfKaalogYC",
+  "tags": []
+}

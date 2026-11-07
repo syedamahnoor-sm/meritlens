@@ -1,0 +1,181 @@
+{
+  "name": "MeritLens - 03 - Human Review",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4693fe31-1b1c-43b8-966d-5f01ee4069b7",
+              "name": "assessment_id",
+              "value": "={{ Number($json[\"Assessment ID\"]) }}",
+              "type": "number"
+            },
+            {
+              "id": "ac682951-3321-4d49-8c05-fbe0451e15bd",
+              "name": "review_status",
+              "value": "={{ $json[\"Review Status\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "4307a6cc-b40d-4d14-a153-c510a6acd980",
+              "name": "reviewer_notes",
+              "value": "={{ $json[\"Reviewer Notes\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "1cccf378-22a6-4c0b-bcf7-7d1ebe597ffe",
+      "name": "Review Input"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH updated AS (\n    UPDATE candidate_assessments\n    SET\n        review_status = $2,\n        reviewer_notes = $3,\n        reviewed_at = CASE\n            WHEN $2 = 'reviewed' THEN NOW()\n            ELSE NULL\n        END\n    WHERE id = $1\n    RETURNING id, candidate_reference, review_status, reviewer_notes, reviewed_at\n)\nSELECT\n    EXISTS (SELECT 1 FROM updated) AS success,\n    (SELECT id FROM updated) AS assessment_id,\n    (SELECT review_status FROM updated) AS review_status;",
+        "options": {
+          "queryReplacement": "={{ [   $json.assessment_id,   $json.review_status,   $json.reviewer_notes ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        0
+      ],
+      "id": "3e046742-d5a1-4994-940c-99f2cdeb4b93",
+      "name": "Update Review Status",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "MeritLens — Human Review",
+        "formDescription": "Review an AI-generated candidate assessment and submit your observations.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Assessment ID",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Review Status",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "in_review"
+                  },
+                  {
+                    "option": "reviewed"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer Notes",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a928f652-6763-42e8-b20a-b3263bf3a426",
+      "name": "Human Review Form",
+      "webhookId": "2913cbda-9e6f-450c-af24-1d714f8c79ed",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "3mLLSYUIR6d8K7Bl",
+          "name": "MeritLens - Reviewer Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "={{ $json.success\n  ? `Assessment #${$json.assessment_id} has been updated successfully. Review Status: ${$json.review_status}.`\n  : 'Assessment not found. Please verify the Assessment ID and try again.'\n}}"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "e93c8d76-c3ff-4d8a-a360-843363c16c83",
+      "name": "Human Review Confirmation",
+      "webhookId": "9e4de2c8-d392-4eeb-b147-15b95c726107"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Review Input": {
+      "main": [
+        [
+          {
+            "node": "Update Review Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Review Form": {
+      "main": [
+        [
+          {
+            "node": "Review Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Review Status": {
+      "main": [
+        [
+          {
+            "node": "Human Review Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f6b00f59-42e7-4199-973d-cb5b93545f1e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0982c85c58eb8dc7f661437e98d31b8f8606a04def32a04d615f596ff1817614"
+  },
+  "nodeGroups": [],
+  "id": "XvHKeDTApDeGmqYm",
+  "tags": []
+}

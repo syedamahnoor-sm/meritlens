@@ -1,0 +1,492 @@
+{
+  "name": "MeritLens - 02 - RAG Recruitment Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ `Assess the following candidate resume against the job description identified by ${$json.job_reference}.\n\nJOB REFERENCE: ${$json.job_reference}\n\nCANDIDATE RESUME:\n${$json.resume_text}\n\nInstructions:\n1. Retrieve the job description matching the specified job reference.\n2. Compare the candidate's documented skills against that job's requirements.\n3. Classify requirements as Demonstrated, Partially Demonstrated, or Not Evidenced.\n4. Identify missing information.\n5. Suggest interview questions and practical skill-verification exercises.\n6. Suggest relevant follow-up actions for the recruiter.\n7. Do not invent candidate qualifications or make hiring decisions.\n8. If the specified job description cannot be retrieved, do not generate an assessment.` }}",
+        "options": {
+          "systemMessage": "You are MeritLens, an evidence-based recruitment assessment assistant.\n\nFor every candidate assessment:\n1. Retrieve the relevant job description using the recruitment_knowledge tool.\n2. Identify required and preferred skills from the retrieved document.\n3. Compare each requirement against the candidate's explicitly provided skills, projects, and experience.\n4. Classify each requirement as Demonstrated, Partially Demonstrated, or Not Evidenced.\n5. Provide supporting candidate evidence for each classification.\n6. Distinguish required skills from preferred skills.\n7. Identify missing information and suggest relevant interview questions.\n8. Do not invent qualifications, experience, or achievements.\n9. Do not use sensitive personal characteristics in assessments.\n10. Do not assign hiring scores, rank candidates, or make hiring/rejection recommendations.\n11. Make clear that a human recruiter must review the evidence.\n\nResponse format:\n- Position\n- Candidate-provided background summary\n- Required skills evidence table\n- Preferred skills evidence table\n- Missing information\n- Suggested interview questions\n- Human review note\n\nAlways retrieve job requirements before performing an assessment. If retrieval fails, explain the limitation rather than guessing.\n\nEVIDENCE VALIDATION RULES:\n1. For requirements containing AND, every component must have supporting evidence before classifying the entire requirement as Demonstrated.\n2. If only some components are evidenced, classify the requirement as Partially Demonstrated.\n3. For requirements containing OR, evidence of either acceptable alternative is sufficient.\n4. Never infer knowledge of one technology solely from experience with a related technology.\n5. Not Evidenced means the resume does not establish the skill; it does not mean the candidate lacks it.\n6. Assess only job-related qualifications and evidence. Do not evaluate protected characteristics, personal background, or subjective cultural fit.\n7. Do not produce hiring scores, rankings, or selection recommendations.\n8. Human reviewers must independently verify the evidence before making employment decisions.\n\nRECRUITER ACTION RECOMMENDATIONS\n\nAfter completing the Required Skills Evidence Table,\ninclude a section titled \"Recruiter Action Recommendations\".\n\nThis section must contain:\n\n1. Skills to Verify\n   Identify up to 5 job-relevant skills that are partially\n   demonstrated or not evidenced in the resume.\n\n2. Suggested Technical Assessments\n   Recommend 2-3 practical exercises aligned with the\n   retrieved job description.\n\n3. Interview Questions\n   Generate 3-5 targeted questions to clarify missing\n   or incomplete evidence.\n\n4. Follow-Up Information\n   Identify specific documentation, project examples,\n   or experience details the recruiter should request.\n\n5. Human Review Checklist\n   Provide a short checklist for the recruiter to verify\n   the assessment against the original resume and job\n   requirements.\n\nIMPORTANT:\n- Base recommendations on the retrieved job description.\n- Do not invent candidate qualifications.\n- Do not recommend automatic hiring or rejection.\n- Do not rank candidates or generate suitability scores.\n- Clearly distinguish missing evidence from lack of skill.\n- All final employment decisions must remain with\n  an authorized human reviewer."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1376,
+        -192
+      ],
+      "id": "458b6908-5a03-4ee9-b2e8-c55fcde53988",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        0
+      ],
+      "id": "d560afd8-0900-461d-b98c-dd5d542b64b3",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "xomZCY5mSBgRloPF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Search job descriptions and recruitment requirements. Use this tool to retrieve relevant skills, experience, and responsibilities before answering recruitment-related questions.",
+        "tableName": "meritlens_documents",
+        "options": {
+          "columnNames": {
+            "values": {}
+          },
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "job_reference",
+                "value": "={{ $('Prepare Assessment Input').first().json.job_reference }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1440,
+        160
+      ],
+      "id": "1589b6da-652c-4520-9b2d-51fc9b5cc53b",
+      "name": "recruitment_knowledge",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        384
+      ],
+      "id": "e09ac26d-27e8-4793-880b-eddd9be0ffc8",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "xomZCY5mSBgRloPF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Candidate_Resume",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "7a0c81c7-7ffe-4ea6-8d75-f77f53d0ffca",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO candidate_assessments (\n    candidate_reference,\n    job_reference,\n    job_title,\n    assessment_report,\n    review_status\n)\nSELECT\n    $1,\n    $2,\n    metadata->>'job_title',\n    $3,\n    'pending_review'\nFROM meritlens_documents\nWHERE metadata->>'job_reference' = $2\n  AND metadata->>'document_type' = 'job_description'\nLIMIT 1\nRETURNING\n    id,\n    candidate_reference,\n    job_reference,\n    job_title,\n    review_status,\n    created_at;",
+        "options": {
+          "queryReplacement": "={{ [\n  'candidate-' + $execution.id,\n  $('Prepare Assessment Input').first().json.job_reference,\n  $json.output\n] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1728,
+        -192
+      ],
+      "id": "b1446b3b-811f-4a22-8b59-0419a6bfeac9",
+      "name": "Save Candidate Assessment",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "df44b130-5b5d-451a-8b94-af111af36fa9",
+              "name": "output",
+              "value": "={{ $('AI Agent').first().json.output + '\\n\\n---\\nAssessment ID: ' + $json.id + '\\nReview Status: ' + $json.review_status + '\\nHuman review is required.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1968,
+        -192
+      ],
+      "id": "8eb47adc-632b-4958-98ef-a7222cd3e45e",
+      "name": "Prepare Assessment Response"
+    },
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "MeritLens — Resume Assessment",
+        "formDescription": "Submit a candidate resume for evidence-based assessment against a selected job description.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Job Reference",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Candidate Resume",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".pdf",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "3d19fab1-b0ac-412b-b00a-470b28aed82a",
+      "name": "Resume Submission Form",
+      "webhookId": "5d98a88a-ef05-484c-920d-b78039f9b91e",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "jXePlkB2dVc0nmFC",
+          "name": "meritlens - job submission"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2ee2d0eb-70a6-4186-b31b-ea3eb01c1f82",
+              "name": "job_reference",
+              "value": "={{ $('Resume Submission Form').first().json['Job Reference'] }}",
+              "type": "string"
+            },
+            {
+              "id": "17b99d5a-d86e-4d05-ab0a-8d1f5dc0272a",
+              "name": "resume_text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "ea634a88-2b83-4c22-9578-fb9befab9a78",
+      "name": "Prepare Assessment Input"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    COUNT(*)::int AS job_count\nFROM meritlens_documents\nWHERE metadata->>'job_reference' = $1\n  AND metadata->>'document_type' = 'job_description';",
+        "options": {
+          "queryReplacement": "={{ [$json.job_reference] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        0
+      ],
+      "id": "f2c3465d-fbf8-45ee-b8de-05f8b7778a5a",
+      "name": "Validate Job Reference",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "3e79d5b4-4c77-46b5-8233-fb57cffa9108",
+              "leftValue": "=\t{{ $json.job_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        896,
+        0
+      ],
+      "id": "665e69ce-e7f1-4bb1-92a7-0a20f4a4d2c1",
+      "name": "Job Reference Valid?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "af84ba29-d38a-4b60-957b-646995420550",
+              "name": "job_reference",
+              "value": "={{ $('Prepare Assessment Input').first().json.job_reference }}",
+              "type": "string"
+            },
+            {
+              "id": "3bc13783-b88f-42e0-86ac-893ecc7926c2",
+              "name": "resume_text",
+              "value": "={{ $('Prepare Assessment Input').first().json.resume_text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1136,
+        -192
+      ],
+      "id": "c24d194f-6535-4edc-8ebc-b1dd63121d3f",
+      "name": "Restore Assessment Input"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a2e2b9d-d6ca-4149-ae76-9fd62b7c484a",
+              "name": "success",
+              "value": "false",
+              "type": "string"
+            },
+            {
+              "id": "20402998-c3cb-4b0e-bc3e-fb8808719ff9",
+              "name": "status",
+              "value": "invalid_job_reference",
+              "type": "string"
+            },
+            {
+              "id": "136ee724-3148-42c2-a6c9-72704e93aa7c",
+              "name": "job_reference",
+              "value": "={{ $('Prepare Assessment Input').first().json.job_reference }}",
+              "type": "string"
+            },
+            {
+              "id": "812c5095-0f9c-477c-96f2-eb617d605e9c",
+              "name": "message",
+              "value": "={{ 'Job reference ' + $('Prepare Assessment Input').first().json.job_reference + ' does not exist in the MeritLens knowledge base. Please enter a valid job reference.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1120,
+        96
+      ],
+      "id": "bc96cfe0-4533-4c2a-9990-a7c02046b8e8",
+      "name": "Invalid Job Reference Response"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "recruitment_knowledge": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "recruitment_knowledge",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Assessment Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Save Candidate Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Candidate Assessment": {
+      "main": [
+        [
+          {
+            "node": "Prepare Assessment Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Submission Form": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Assessment Input": {
+      "main": [
+        [
+          {
+            "node": "Validate Job Reference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Job Reference": {
+      "main": [
+        [
+          {
+            "node": "Job Reference Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Reference Valid?": {
+      "main": [
+        [
+          {
+            "node": "Restore Assessment Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Invalid Job Reference Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Assessment Input": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d8ec98cb-2585-44ab-96d8-9044231b2167",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0982c85c58eb8dc7f661437e98d31b8f8606a04def32a04d615f596ff1817614"
+  },
+  "nodeGroups": [],
+  "id": "ETvIKSdFTb9WfwPg",
+  "tags": []
+}

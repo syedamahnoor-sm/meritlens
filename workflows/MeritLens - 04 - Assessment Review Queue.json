@@ -1,0 +1,64 @@
+{
+  "name": "MeritLens - 04 - Assessment Review Queue",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3ffc848d-f869-4615-99c5-6f495212100e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    id AS assessment_id,\n    candidate_reference,\n    job_reference,\n    job_title,\n    review_status,\n    created_at,\n    LEFT(assessment_report, 250) AS report_preview\nFROM candidate_assessments\nWHERE review_status IN ('pending_review', 'in_review')\nORDER BY created_at DESC;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "54b552c5-e89b-42e0-aee5-e0d8c27ea3a5",
+      "name": "Get Pending Assessments",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Assessments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1f9189a8-a9c4-43f2-a834-9d0f0beed9d8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0982c85c58eb8dc7f661437e98d31b8f8606a04def32a04d615f596ff1817614"
+  },
+  "nodeGroups": [],
+  "id": "Kx2olZoaNcSLbroy",
+  "tags": []
+}

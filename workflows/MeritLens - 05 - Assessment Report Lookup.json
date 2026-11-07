@@ -1,0 +1,114 @@
+{
+  "name": "MeritLens - 05 - Assessment Report Lookup",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "basicAuth",
+        "formTitle": "MeritLens — Assessment Report Lookup",
+        "formDescription": "Enter an Assessment ID to retrieve the candidate's complete assessment report, job details, and human review status.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Assessment ID",
+              "fieldType": "number",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a187a8ad-d37c-4077-bbd1-00a2b567c684",
+      "name": "Assessment Lookup Form",
+      "webhookId": "15dc1abc-ae23-4843-adb3-310d4bb83ff4",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "j5Wc5yluuG26GyhV",
+          "name": "Assessment Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n    ca.id AS assessment_id,\n    ca.candidate_reference,\n    ca.job_reference,\n    ca.job_title,\n    ca.assessment_report,\n    ca.review_status,\n    ca.reviewer_notes,\n    ca.created_at,\n    ca.reviewed_at,\n    (ca.id IS NOT NULL) AS found\nFROM (SELECT 1) AS input\nLEFT JOIN candidate_assessments ca\n    ON ca.id = $1;",
+        "options": {
+          "queryReplacement": "={{ [Number($json[\"Assessment ID\"])] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "cebe3c84-3d3a-4955-a824-8cd3f3386906",
+      "name": "Get Assessment Report",
+      "credentials": {
+        "postgres": {
+          "id": "PNORX2lhaxJUZQI0",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "={{ $json.found\n  ? `ASSESSMENT REPORT\n\nAssessment ID: ${$json.assessment_id}\nJob Reference: ${$json.job_reference}\nPosition: ${$json.job_title}\nReview Status: ${$json.review_status}\n\n--------------------------------\n\n${$json.assessment_report}\n\n--------------------------------\n\nReviewer Notes:\n${$json.reviewer_notes || 'No reviewer notes yet.'}`\n  : 'Assessment not found. Please check the Assessment ID and try again.'\n}}"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        448,
+        0
+      ],
+      "id": "143e40fe-6738-42ee-a1a0-032ca6eb734e",
+      "name": "Display Assessment Report",
+      "webhookId": "eed96b6e-9e23-4e4c-906c-f54fab86d855"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Assessment Lookup Form": {
+      "main": [
+        [
+          {
+            "node": "Get Assessment Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assessment Report": {
+      "main": [
+        [
+          {
+            "node": "Display Assessment Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "db6122a6-6216-4f37-b013-62d7811d6d16",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0982c85c58eb8dc7f661437e98d31b8f8606a04def32a04d615f596ff1817614"
+  },
+  "nodeGroups": [],
+  "id": "JA0Sm2DTPTZBZrPx",
+  "tags": []
+}
